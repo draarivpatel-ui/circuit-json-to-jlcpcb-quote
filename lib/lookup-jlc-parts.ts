@@ -63,6 +63,11 @@ export const lookupJlcParts = async (
         `${designators.join(",")}: no part number given, matched "${comment}" to ${part.lcsc} (${part.mfr})`,
       )
     }
+    if (resolution.assumedManualJoint) {
+      warnings.push(
+        `${designators.join(",")}: no catalog footprint for ${part.lcsc}. Estimated one manual solder joint per placement.`,
+      )
+    }
   }
   return { pricedBom, unresolvedBomLines, warnings }
 }

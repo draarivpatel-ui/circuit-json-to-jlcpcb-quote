@@ -134,12 +134,15 @@ they are read from the `pcb_board` element.
 
 A quote that silently leaves something out comes out low, so these throw:
 
-- a BOM line that cannot be priced (no part number, not on jlcsearch, no
-  footprint). Pass `unresolvedParts: "exclude"` to quote without those
+- a BOM line that cannot be priced (no part number or no matching catalog part).
+  Pass `unresolvedParts: "exclude"` to quote without those
   lines; they are then listed in `quote.excludedBomLines`.
 - a part lookup that fails or answers in an unexpected shape
 - a board with no price in the table: a layer count, rigid thickness,
   material or surface finish that has not been priced
+
+If jlcsearch prices a part but has no footprint, the part stays in the quote.
+Assembly assumes one manual solder joint per placement and reports a warning.
 
 ## Part prices
 
