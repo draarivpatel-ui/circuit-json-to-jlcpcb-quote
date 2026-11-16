@@ -29,6 +29,14 @@ test("bottom paste on through-hole pins and slots draws no warning", () => {
   expect(inputs.features.smtJointsPerBoard).toBe(1)
 })
 
+test("bottom paste at the center of a single-block slot draws no warning", () => {
+  const files = createFiles("X3000000Y8000000D03*")
+  files["drill-L1-L2.drl"] =
+    "M48\nMETRIC\nT1C0.8\n%\nT1\nX2.0Y8.0G85X4.0Y8.0\nM30\n"
+
+  expect(getQuoteInputsFromFabricationFiles(files).warnings).toEqual([])
+})
+
 test("bottom paste away from any pin is reported", () => {
   const inputs = getQuoteInputsFromFabricationFiles(
     createFiles("X5000000Y5000000D03*\nX8000000Y2000000D03*"),

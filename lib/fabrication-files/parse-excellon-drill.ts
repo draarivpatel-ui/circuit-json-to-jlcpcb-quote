@@ -11,7 +11,7 @@ export interface DrillHit {
 
 const TOOL_DEFINITION = /^T(\d+)C([\d.]+)/
 const TOOL_SELECTION = /^T(\d+)$/
-const HIT = /^X(-?[\d.]+)Y(-?[\d.]+)/
+const HIT = /^X(-?[\d.]+)Y(-?[\d.]+)(?:G85X(-?[\d.]+)Y(-?[\d.]+))?/
 const SLOT_END = /^G85X(-?[\d.]+)Y(-?[\d.]+)/
 const MM_PER_INCH = 25.4
 
@@ -62,11 +62,19 @@ export const parseExcellonDrill = (drillText: string): DrillHit[] => {
     if (selectedDiameterMm <= 0) {
       throw new Error("Drill file has a hit before any tool is selected")
     }
+    const [, x, y, slotEndX, slotEndY] = hit
+    let combinedSlotEnd: DrillHit["slotEnd"] = null
+    if (slotEndX !== undefined && slotEndY !== undefined) {
+      combinedSlotEnd = {
+        x: Number(slotEndX) * mmPerUnit,
+        y: Number(slotEndY) * mmPerUnit,
+      }
+    }
     hits.push({
       diameterMm: selectedDiameterMm,
-      x: Number(hit[1]) * mmPerUnit,
-      y: Number(hit[2]) * mmPerUnit,
-      slotEnd: null,
+      x: Number(x) * mmPerUnit,
+      y: Number(y) * mmPerUnit,
+      slotEnd: combinedSlotEnd,
     })
   }
   return hits
