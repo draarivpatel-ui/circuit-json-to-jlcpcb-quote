@@ -1,5 +1,10 @@
 import { estimatedPartBilling } from "../jlcpcb-price-table"
-import type { JlcPart, PricedBomLine, QuoteSection } from "../types"
+import type {
+  JlcPart,
+  LcscPartNumber,
+  PricedBomLine,
+  QuoteSection,
+} from "../types"
 import { createQuoteLineItem } from "./create-quote-line-item"
 
 /**
@@ -32,6 +37,40 @@ export const getUnitPriceForQuantity = (part: JlcPart, quantity: number) =>
   part.priceTiers.findLast((tier) => quantity >= tier.fromQuantity)
     ?.unitPrice ?? part.unitPrice
 
+export const getBilledPartsByNumber = (order: {
+  bom: PricedBomLine[]
+  assembledQuantity: number
+}) => {
+  const partsByNumber = new Map<
+    LcscPartNumber,
+    Pick<PricedBomLine, "part" | "quantity" | "designators">
+  >()
+  for (const { part, quantity, designators } of order.bom) {
+    const group = partsByNumber.get(part.lcsc)
+    if (group) {
+      group.quantity += quantity
+      group.designators.push(...designators)
+    } else {
+      partsByNumber.set(part.lcsc, {
+        part,
+        quantity,
+        designators: [...designators],
+      })
+    }
+  }
+  return new Map(
+    Array.from(partsByNumber, ([lcsc, { part, quantity, designators }]) => {
+      const usedQuantity = quantity * order.assembledQuantity
+      const billedQuantity = getBilledQuantity(part, usedQuantity)
+      const unitPrice = getUnitPriceForQuantity(part, billedQuantity)
+      return [
+        lcsc,
+        { part, designators, usedQuantity, billedQuantity, unitPrice },
+      ] as const
+    }),
+  )
+}
+
 export const estimatePartsCost = (order: {
   bom: PricedBomLine[]
   assembledQuantity: number
@@ -39,25 +78,28 @@ export const estimatePartsCost = (order: {
   const warnings: string[] = []
   let partsCost = 0
   let partsCostWithoutSpares = 0
-  let linesWithEstimatedBilling = 0
-  for (const line of order.bom) {
-    const { part } = line
-    const usedQuantity = line.quantity * order.assembledQuantity
-    const billedQuantity = getBilledQuantity(part, usedQuantity)
-    const unitPrice = getUnitPriceForQuantity(part, billedQuantity)
+  let partsWithEstimatedBilling = 0
+  const billedParts = getBilledPartsByNumber(order)
+  for (const {
+    part,
+    designators,
+    usedQuantity,
+    billedQuantity,
+    unitPrice,
+  } of billedParts.values()) {
     partsCost += billedQuantity * unitPrice
     partsCostWithoutSpares += usedQuantity * unitPrice
-    if (!part.isBasic && !part.billing) linesWithEstimatedBilling++
+    if (!part.isBasic && !part.billing) partsWithEstimatedBilling++
     if (part.stock !== null && part.stock < billedQuantity) {
       warnings.push(
-        `${line.designators.join(",")}: ${part.lcsc} has ${part.stock} in stock at JLCPCB, ${billedQuantity} needed`,
+        `${designators.join(",")}: ${part.lcsc} has ${part.stock} in stock at JLCPCB, ${billedQuantity} needed`,
       )
     }
   }
-  const label = `Parts for ${order.assembledQuantity} boards (${order.bom.length} unique)`
+  const label = `Parts for ${order.assembledQuantity} boards (${billedParts.size} unique)`
   return {
     lineItems: [
-      linesWithEstimatedBilling === 0
+      partsWithEstimatedBilling === 0
         ? createQuoteLineItem({
             category: "components",
             key: "components",
@@ -74,7 +116,7 @@ export const estimatePartsCost = (order: {
               partsCostWithoutSpares * estimatedPartBilling.range.lowFraction,
             highCost: partsCost * estimatedPartBilling.range.highFraction,
             confidence: "calibrated",
-            note: `${linesWithEstimatedBilling} extended parts priced at the single-piece price with estimated spares`,
+            note: `Estimated spares for ${partsWithEstimatedBilling} of ${billedParts.size} part types`,
           }),
     ],
     warnings,

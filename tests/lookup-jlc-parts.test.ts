@@ -61,6 +61,28 @@ test("reads price, stock and flags from jlcsearch and pads from the footprint", 
   expect(line).not.toHaveProperty("part")
 })
 
+test.each([
+  "10-:0.4,1-9:0.5",
+  '[{"qFrom":10,"qTo":null,"price":0.4},{"qFrom":1,"qTo":9,"price":0.5}]',
+])("loads sorted catalog price breaks from %s", async (price) => {
+  const result = await lookup(
+    [line],
+    createFakeFetch({
+      catalogComponents: { C7: { ...jlcsearchComponent, price } },
+      footprintShapes: {
+        C7: createFootprintShapes({ smt: 2, throughHole: 0 }),
+      },
+    }),
+  )
+  expect(result.pricedBom[0]?.part).toMatchObject({
+    unitPrice: 0.5,
+    priceTiers: [
+      { fromQuantity: 1, unitPrice: 0.5 },
+      { fromQuantity: 10, unitPrice: 0.4 },
+    ],
+  })
+})
+
 test("prices a part without a footprint and reports parts that cannot be priced", async () => {
   const result = await lookup(
     [

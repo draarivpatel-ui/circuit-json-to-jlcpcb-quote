@@ -1,3 +1,4 @@
+import { getBilledPartsByNumber } from "../lib/estimate/estimate-parts-cost"
 import type {
   AdditionalFee,
   AssemblyOption,
@@ -88,7 +89,7 @@ const renderShippingOption = (option: ShippingOption, quote: JlcpcbQuote) =>
     isSelected: option.carrier === quote.order.carrier,
   })
 
-const renderBomLine = (line: PricedBomLine) => {
+const renderBomLine = (line: PricedBomLine, unitPrice: number) => {
   const library = line.part.isBasic
     ? "basic"
     : line.part.isPreferred
@@ -100,13 +101,17 @@ const renderBomLine = (line: PricedBomLine) => {
     <td>${escapeHtml(line.part.mfr)}</td>
     <td>${escapeHtml(line.part.package)}</td>
     <td>${library}</td>
-    <td class="amount">${formatUsd(line.part.unitPrice)}</td>
+    <td class="amount">$${unitPrice.toFixed(4)}</td>
     <td class="designators">${escapeHtml(line.designators.join(", "))}</td>
   </tr>`
 }
 
 const renderBom = (quote: JlcpcbQuote) => {
   if (quote.bom.length === 0 && quote.excludedBomLines.length === 0) return ""
+  const billedParts = getBilledPartsByNumber({
+    bom: quote.bom,
+    assembledQuantity: quote.order.assembledQuantity,
+  })
   const excluded =
     quote.excludedBomLines.length === 0
       ? ""
@@ -122,7 +127,14 @@ const renderBom = (quote: JlcpcbQuote) => {
       ${excluded}
       <table class="bom">
         <thead><tr><th>Qty</th><th>Part</th><th>MPN</th><th>Package</th><th>Library</th><th>Unit</th><th>Designators</th></tr></thead>
-        <tbody>${quote.bom.map(renderBomLine).join("")}</tbody>
+        <tbody>${quote.bom
+          .map((line) =>
+            renderBomLine(
+              line,
+              billedParts.get(line.part.lcsc)?.unitPrice ?? line.part.unitPrice,
+            ),
+          )
+          .join("")}</tbody>
       </table>
     </details>`
 }

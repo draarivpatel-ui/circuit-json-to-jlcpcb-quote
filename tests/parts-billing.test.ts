@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { estimateJlcpcbQuote } from "lib/index"
+import { estimateJlcpcbQuote, formatJlcpcbQuote } from "lib/index"
 import type { PricedBomLine } from "lib/index"
 import {
   createBoardFeatures,
@@ -70,6 +70,21 @@ test("basic parts are billed exactly as used", () => {
       }),
     ]),
   ).toBe(0.12)
+})
+
+test("uses the combined billed quantity when BOM lines resolve to the same part", () => {
+  const part = createJlcPart({
+    unitPrice: 0.5,
+    priceTiers: [{ fromQuantity: 17, unitPrice: 0.4 }],
+    billing: { minimumQuantity: 0, spareQuantity: 2 },
+  })
+  const quote = quoteFiveBoards([
+    createPricedBomLine({ designators: ["U1"], quantity: 1, part }),
+    createPricedBomLine({ designators: ["U2", "U3"], quantity: 2, part }),
+  ])
+  // 3 per board x 5 boards + 2 spares = 17 at the price break.
+  expect(getLineItemCost(quote, "components")).toBe(6.8)
+  expect(formatJlcpcbQuote(quote)).toContain("0.4000  U1")
 })
 
 test("parts without billed-spare details get estimated spares and a range", () => {
