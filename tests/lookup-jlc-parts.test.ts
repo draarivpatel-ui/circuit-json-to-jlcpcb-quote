@@ -61,7 +61,7 @@ test("reads price, stock and flags from jlcsearch and pads from the footprint", 
   expect(line).not.toHaveProperty("part")
 })
 
-test("reports parts that cannot be priced, with the reason", async () => {
+test("prices a part without a footprint and reports parts that cannot be priced", async () => {
   const result = await lookup(
     [
       line,
@@ -70,14 +70,21 @@ test("reports parts that cannot be priced, with the reason", async () => {
     ],
     createFakeFetch({ components: { C7: jlcsearchComponent } }),
   )
-  expect(result.pricedBom).toEqual([])
+  expect(result.pricedBom).toHaveLength(1)
+  expect(result.pricedBom[0]).toMatchObject({
+    designators: ["U1"],
+    part: { lcsc: "C7", unitPrice: 0.5 },
+    footprintJoints: { smt: 0, throughHole: 1 },
+  })
+  expect(result.warnings).toEqual([
+    "U1: no catalog footprint for C7. Estimated one manual solder joint per placement.",
+  ])
   expect(
     result.unresolvedBomLines.map(({ line: unresolved, reason }) => [
       unresolved.designators.join(),
       reason,
     ]),
   ).toEqual([
-    ["U1", "C7 has no footprint, so its solder joints are unknown"],
     ["J1", "no JLCPCB part number"],
     ["U2", "C8 is not on jlcsearch"],
   ])

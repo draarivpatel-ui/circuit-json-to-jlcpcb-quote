@@ -66,7 +66,7 @@ export interface JlcpcbQuoteOptions {
   nitrogenReflow?: boolean
   /**
    * What to do with a BOM line that cannot be priced (no part number, not in
-   * JLCPCB's library, no footprint). "error" (default) throws, because
+   * JLCPCB's library). "error" (default) throws, because
    * leaving parts out makes the quote come out low. "exclude" leaves them out
    * and lists them in `excludedBomLines`.
    */
@@ -160,7 +160,7 @@ export interface JlcPart {
 export interface PricedBomLine extends BomLine {
   part: JlcPart
   matchMethod: "jlc_part_number" | "passive_spec"
-  /** Pads of the part's JLCPCB footprint */
+  /** Catalog pad counts, or one manual joint when the footprint is missing. */
   footprintJoints: { smt: number; throughHole: number }
 }
 

@@ -5,14 +5,12 @@ import { findPassiveOnJlcsearch } from "./find-passive-on-jlcsearch"
 import type { LookupContext } from "./lookup-context"
 
 export type BomLineResolution =
-  | { status: "priced"; line: PricedBomLine }
+  | { status: "priced"; line: PricedBomLine; assumedManualJoint: boolean }
   | { status: "unresolved"; line: BomLine; reason: string }
 
 /**
- * Find the JLCPCB part for one BOM line on jlcsearch, with its price and its
- * footprint's pad counts. "unresolved" means the part genuinely cannot be priced (no part
- * number, not in the library, no footprint); network and format failures
- * throw.
+ * Find the catalog part and pad counts. A missing footprint defaults to one
+ * manual joint per placement. Network and format failures still throw.
  */
 export const resolveBomLine = async (
   line: BomLine,
@@ -42,15 +40,14 @@ export const resolveBomLine = async (
   if (!part) {
     return { status: "unresolved", line, reason: `${lcsc} is not on jlcsearch` }
   }
-  if (!footprintJoints) {
-    return {
-      status: "unresolved",
-      line,
-      reason: `${lcsc} has no footprint, so its solder joints are unknown`,
-    }
-  }
   return {
     status: "priced",
-    line: { ...line, part, matchMethod, footprintJoints },
+    line: {
+      ...line,
+      part,
+      matchMethod,
+      footprintJoints: footprintJoints ?? { smt: 0, throughHole: 1 },
+    },
+    assumedManualJoint: footprintJoints === null,
   }
 }
