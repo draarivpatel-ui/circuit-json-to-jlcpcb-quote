@@ -83,6 +83,22 @@ test.each([
   })
 })
 
+test("accepts a catalog unit price when the part has no quantity tiers", async () => {
+  const result = await lookup(
+    [line],
+    createFakeFetch({
+      catalogComponents: { C7: { ...jlcsearchComponent, price: "0.02" } },
+      footprintShapes: {
+        C7: createFootprintShapes({ smt: 2, throughHole: 0 }),
+      },
+    }),
+  )
+  expect(result.pricedBom[0]?.part).toMatchObject({
+    unitPrice: 0.02,
+    priceTiers: [],
+  })
+})
+
 test("prices a part without a footprint and reports parts that cannot be priced", async () => {
   const result = await lookup(
     [

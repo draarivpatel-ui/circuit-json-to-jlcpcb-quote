@@ -39,6 +39,13 @@ export const fetchJlcsearchPart = async (
   )
   const price = catalogPart?.price?.trim()
   if (catalogPart && price) {
+    const unitPrice = Number(price)
+    if (Number.isFinite(unitPrice) && unitPrice >= 0) {
+      return convertJlcsearchComponentToJlcPart({
+        ...catalogPart,
+        price: unitPrice,
+      })
+    }
     const priceTiers = parseJlcsearchPriceTiers(price, source)
     if (priceTiers.length > 0) {
       return convertJlcsearchComponentToJlcPart(
