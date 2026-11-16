@@ -1,3 +1,4 @@
+import { getBilledPartsByNumber } from "./estimate/estimate-parts-cost"
 import type {
   AdditionalFee,
   AssemblyOption,
@@ -71,14 +72,14 @@ const formatAssemblyOption = (
   ]
 }
 
-const formatBomLine = (line: PricedBomLine) => {
+const formatBomLine = (line: PricedBomLine, unitPrice: number) => {
   const { part } = line
   const library = part.isBasic
     ? "basic"
     : part.isPreferred
       ? "preferred"
       : "extended"
-  return `  ${String(line.quantity).padStart(3)}x ${part.lcsc.padEnd(9)} ${part.mfr.slice(0, 24).padEnd(24)} ${library.padEnd(9)} ${part.unitPrice.toFixed(4).padStart(8)}  ${line.designators.join(",").slice(0, 40)}`
+  return `  ${String(line.quantity).padStart(3)}x ${part.lcsc.padEnd(9)} ${part.mfr.slice(0, 24).padEnd(24)} ${library.padEnd(9)} ${unitPrice.toFixed(4).padStart(8)}  ${line.designators.join(",").slice(0, 40)}`
 }
 
 const formatShippingOption = (
@@ -115,6 +116,10 @@ const formatSummary = (quote: JlcpcbQuote): string[] => [
 /** Plain-text rendering of a quote for terminals and logs. */
 export const formatJlcpcbQuote = (quote: JlcpcbQuote): string => {
   const { features, order } = quote
+  const billedParts = getBilledPartsByNumber({
+    bom: quote.bom,
+    assembledQuantity: order.assembledQuantity,
+  })
   const finish = features.material === "flex" ? "ENIG" : order.surfaceFinish
   const vias = features.smallestVia
     ? `Vias: ${features.viaCount}, smallest ${features.smallestVia.holeDiameterMm}/${features.smallestVia.padDiameterMm} mm`
@@ -159,7 +164,16 @@ export const formatJlcpcbQuote = (quote: JlcpcbQuote): string => {
       note: `merchandise + shipping and taxes, ${quote.order.carrier.toUpperCase()}  (range ${formatUsd(quote.lowGrandTotal)} to ${formatUsd(quote.highGrandTotal)})`,
     }),
     ...(quote.bom.length > 0
-      ? ["", "BOM", ...quote.bom.map(formatBomLine)]
+      ? [
+          "",
+          "BOM",
+          ...quote.bom.map((line) =>
+            formatBomLine(
+              line,
+              billedParts.get(line.part.lcsc)?.unitPrice ?? line.part.unitPrice,
+            ),
+          ),
+        ]
       : []),
     ...(quote.warnings.length > 0
       ? ["", "Warnings", ...quote.warnings.map((warning) => `  - ${warning}`)]

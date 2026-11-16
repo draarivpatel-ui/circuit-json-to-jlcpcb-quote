@@ -16,6 +16,8 @@ const jsonResponse = (body: unknown, status = 200) => ({
 export const createFakeFetch = (catalog: {
   /** jlcsearch /api/search rows, without the lcsc number */
   components?: Partial<Record<LcscPartNumber, object>>
+  /** jlcsearch /components/list.json rows, without the lcsc number */
+  catalogComponents?: Partial<Record<LcscPartNumber, object>>
   /** jlcsearch category rows keyed by path and query */
   jlcsearchLists?: Partial<Record<JlcsearchListUrl, object[]>>
   /** EasyEDA "PAD~..." shapes per part */
@@ -23,9 +25,11 @@ export const createFakeFetch = (catalog: {
 }): FetchLike => {
   return async (url) => {
     const { pathname, search, searchParams } = new URL(url)
-    if (pathname === "/api/search") {
-      const lcsc = searchParams.get("q") ?? ""
-      const component = catalog.components?.[lcsc]
+    if (pathname === "/api/search" || pathname === "/components/list.json") {
+      const isCatalog = pathname === "/components/list.json"
+      const lcsc = searchParams.get(isCatalog ? "search" : "q") ?? ""
+      const rows = isCatalog ? catalog.catalogComponents : catalog.components
+      const component = rows?.[lcsc]
       return jsonResponse({
         components: component
           ? [{ lcsc: Number(lcsc.slice(1)), ...component }]

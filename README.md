@@ -120,7 +120,7 @@ Circuit JSON is quoted the way JLCPCB quotes an order: from fabrication files.
 2. `getQuoteInputsFromFabricationFiles` reads size, layers, vias, holes,
    trace widths, paste openings and the BOM back out of those files.
 3. `lookupJlcParts` prices each BOM line from
-   [jlcsearch](https://jlcsearch.tscircuit.com): unit price, stock, whether
+   [jlcsearch](https://jlcsearch.tscircuit.com): price tiers, stock, whether
    the part is basic or preferred, and its footprint's pads. Resistors and
    capacitors with no part number are matched by rating and package.
 4. `estimateJlcpcbQuote` applies the prices and rules in
@@ -146,16 +146,11 @@ Assembly assumes one manual solder joint per placement and reports a warning.
 
 ## Part prices
 
-All part details come from jlcsearch. It reports a single-piece price, so
-the parts line is an estimate with a range: JLCPCB's quantity price breaks are
-not applied, and the spares JLCPCB bills for extended parts are estimated from
-the unit price. On the one live quote checked, this puts the parts line about
-10% high ($180.87 against $164.76) and the whole quote about 4% high.
-
-The estimator already applies price breaks and billed spares when a part
-carries them (`JlcPart.priceTiers`, `JlcPart.billing`); with those the same
-quote's parts line matches JLCPCB to the cent. They only need to be exposed by
-jlcsearch.
+The calculator uses jlcsearch's catalog price tiers for the total billed
+quantity of each unique part across the assembled boards. If jlcsearch
+only provides a unit price, the calculator uses that price for every piece.
+Spares for extended parts are estimated unless the part has explicit
+billing details (`JlcPart.billing`).
 
 ## Confidence
 

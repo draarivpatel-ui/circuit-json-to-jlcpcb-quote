@@ -145,8 +145,8 @@ export interface JlcPart {
   unitPrice: number
   stock: number | null
   /**
-   * Quantity price breaks, ascending. Empty when the part source does not
-   * report them; jlcsearch does not today.
+   * Quantity price breaks, ascending. Empty when the part source reports a
+   * single unit price without tiers.
    */
   priceTiers: { fromQuantity: number; unitPrice: number }[]
   /**

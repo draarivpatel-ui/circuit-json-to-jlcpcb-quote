@@ -32,6 +32,7 @@ export const fetchJsonWithRetry = async (
         lastFailure = `HTTP ${response.status}`
         continue
       }
+      if (response.status === 404) return { status: 404, json: null }
       return { status: response.status, json: await response.json() }
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error)
